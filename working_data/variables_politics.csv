@@ -1,0 +1,15 @@
+"","X","Name","Label","Country_specific","Scale_type","Type","Format","Valid","Invalid","Question","Group"
+"1",16,"trstprl","Trust in country's parliament","no","ordinal","discrete","numeric-2.0",43514,873,"B6-12 Using this card, please tell me on a score of 0-10 how much you personally trust each of the institutions I read out. 0 means you do not trust an
+institution at all, and 10 means you have complete trust. Firstly... ...[country]'s parliament?","Group Politics"
+"2",17,"trstlgl","Trust in the legal system","no","ordinal","discrete","numeric-2.0",43538,849,"B6-12 Using this card, please tell me on a score of 0-10 how much you personally trust each of the institutions I read out. 0 means you do not trust
+an institution at all, and 10 means you have complete trust. Firstly... ...the legal system?","Group Politics"
+"3",18,"trstplc","Trust in the police","no","ordinal","discrete","numeric-2.0",44067,320,"B6-12 Using this card, please tell me on a score of 0-10 how much you personally trust each of the institutions I read out. 0 means you do not trust an
+institution at all, and 10 means you have complete trust. Firstly... ...the police?","Group Politics"
+"4",19,"trstplt","Trust in politicians","no","ordinal","discrete","numeric-2.0",43741,646,"B6-12 Using this card, please tell me on a score of 0-10 how much you personally trust each of the institutions I read out. 0 means you do not trust an
+institution at all, and 10 means you have complete trust. Firstly... ...politicians?","Group Politics"
+"5",21,"trstep","Trust in the European Parliament","no","ordinal","discrete","numeric-2.0",40924,3463,"B6-12 Using this card, please tell me on a score of 0-10 how much you personally trust each of the institutions I read out. 0 means you do not trust an
+institution at all, and 10 means you have complete trust. Firstly... ...the European Parliament?","Group Politics"
+"6",22,"trstun","Trust in the United Nations","no","ordinal","discrete","numeric-2.0",40928,3459,"B6-12 Using this card, please tell me on a score of 0-10 how much you personally trust each of the institutions I read out. 0 means you do not trust an
+institution at all, and 10 means you have complete trust. Firstly... ...the United
+Nations?","Group Politics"
+"7",83,"lrscale","Placement on left right scale","no","ordinal","discrete","numeric-2.0",38583,5804,"B26 In politics people sometimes talk of 'left' and 'right'. Using this card, where would you place yourself on this scale, where 0 means the left and 10 means the right?","Group Politics"
