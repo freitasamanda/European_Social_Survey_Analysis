@@ -109,7 +109,6 @@ remove(na)
 
 
 # Saving the cleaned data -------------------------------------------------
-
 #saving only revelant variables
 write.csv(news, "working_data/variables_news.csv")
 write.csv(politics, "working_data/variables_politics.csv")
@@ -118,13 +117,14 @@ write.csv(politics, "working_data/variables_politics.csv")
 write.csv(data, "working_data/cleaning_data_2.csv") 
 #--------------------
 
-#reloarding environment
-#-----------------
+
+# reloarding environment --------------------------------------------------
+#rm(list=ls())
+
 data <- read.csv("working_data/cleaning_data_2.csv")
 news <- read.csv("working_data/variables_news.csv")
 politics <- read.csv("working_data/variables_politics.csv")
 variables <- read.csv("original_data/original_variables.csv")
-
 
 colnames(data)
 #vizualizando todas a variavés
@@ -132,8 +132,9 @@ summary(data)
 View(data)
 #-------------------------------
 
-#LIMPANDO
-#------------------------------------
+
+# Cleaning phase 2 --------------------------------------------------------
+
 #a coluna edition é inútil e a name também e a proddate também
 #quais os domínios de cada valor? tem muitos valores do tipo 9999, vou ter que ir checando como o PDF ao lado
 
@@ -209,7 +210,7 @@ data2 <- data2 %>%
   filter(lrscale < 11)
 
 summary(data2)
-#-------------------------------------
 
+# Saving the new cleaned data ---------------------------------------------
 #SALVANDO!!!
-write.csv(data2, "clean_data.csv")
+write.csv(data2, "working_data/clean_data_final.csv")
