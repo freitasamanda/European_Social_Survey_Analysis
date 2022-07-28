@@ -1,0 +1,576 @@
+---
+title: "projeto_final"
+author: "Amanda Freitas"
+date: '2022-07-26'
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidylog)
+library(readr)
+library(ggplot2)
+library(knitr)
+library(tidyr)
+library(RColorBrewer)
+library(broom)
+```
+
+# European Social Survey - Posicionamento político e dieta de mídia na Europa
+
+Banco de dados usado: ESS Round 8: European Social Survey Round 8 Data
+(2016). Data file edition 2.1. NSD - Norwegian Centre for Research Data,
+Norway -- Data Archive and distributor of ESS data for ESS ERIC.
+<doi:10.21338/NSD-ESS8-2016>
+
+Obtido em:
+<https://www.kaggle.com/datasets/pascalbliem/european-social-survey-ess-8-ed21-201617>
+
+Codebook disponível em:
+<https://stessrelpubprodwe.blob.core.windows.net/data/round8/survey/ESS8_appendix_a7_e01_1.pdf>
+
+Universe: All persons aged 15 and over resident within private
+households, regardless of their nationality, citizenship, language or
+legal status, in the countries as listed in the "Geographical Coverage"
+
+Time period: 21-08-2016 - 27-12-2017
+
+Geographical scope:Europe
+
+Geographical Unit: Austria, Belgium, Czechia, Estonia, Finland, France,
+Germany, Hungary, Iceland, Ireland, Israel, Italy, Lithuania,
+Netherlands, Norway, Poland, Portugal, Russian Federation, Slovenia,
+Spain, Sweden, Switzerland, United Kingdom
+
+------------------------------------------------------------------------
+
+O presente trabalho buscou explorar a distribuição de variáveis
+relacionadas ao autoposicionamento político, o consumo de notícias sobre
+política, uso de internet e interesse em política no continente Europeu.
+Para isso, usou a 8a onda do ESS, aplicada em 2016/2017.
+
+# Importando os dados originais
+
+```{r message=FALSE, warning=FALSE}
+original_variables <- read.csv("original_data/original_variables.csv") 
+
+original_variables <- as_tibble(original_variables)
+
+original_data <- read.csv("original_data/ESS8e02.1_F1.csv")
+
+original_data <- as_tibble(original_data)
+
+dim(original_variables)
+dim(original_data)
+
+```
+
+Há dois bancos de dados usados inicialmente:
+
+O banco de dados chamado nesse projeto de original_variables contém a
+descrição de todas as variáveis, a questão correspondente no survey, e
+mais informações a respeito de cada variável. Existem 534 variáveis no
+banco. Este banco de dados foi usado também para seleção das variáveis
+necessárias para a análise sobre valores políticos e consumo de mídia.
+
+Cada linha do banco de dados original corresponde à resposta de um dos
+44.387 respondentes a cada uma das 543 perguntas do survey.
+
+# Limpeza dos dados
+
+## Descrição das variáveis relevantes
+
+Primeiramente foi necessário selecionar as variáveis relacionadas a
+consumo de mídia e valores políticos, além da coluna correspondetne ao
+país de origem do respondente. No banco de dados com a descrição das
+variáveis, foi possível identificar que as seguintes variáveis
+interessam para os objetivos, de acordo com o codebook:
+
+1.  **cntry** - country of respondent - há 23 opções de países, cada um
+    identificado com siglas de 2 letras;
+
+2.  **nwspol** - News about politics and current affairs, watching,
+    reading or listening, in minutes - 00 corresponde a nenhum tempo
+
+    **Questão aplicada**: On a typical day, about how much time do you
+    spend watching, reading or listening to news about politics and
+    current affairs?
+
+3.  **netusoft** - Internet use, how often
+
+    **Questão aplicada:** People can use the internet on different
+    devices such as computers, tablets and smartphones. How often do you
+    use the internet on these or any other devices, whether for work or
+    personal use? Em que, 1 = Never, 2 = Only occasionally 3 = A few
+    times a week 4 = Most days 5 = Every day
+
+4.  **lrscale** - Placement on left right scale
+
+    **Questão aplicada**: In politics people sometimes talk of 'left'
+    and 'right'. Using this card, where would you place yourself on this
+    scale, where 0 means the left and 10 means the right?
+
+5.  **polintr -** How interested in politics
+
+    **Questão aplicada**: How interested would you say you are in
+    politics - are you... ; Em que, 1 Very interested 2 Quite interested
+    3 Hardly interested 4 Not at all intereste
+
+Além disso, as seguintes variáveis sociodemográficas foram mantidas:
+
+1.  **gndr** - Gender em que 1 é Male e 2 é Female
+2.  **yrbrn** - Year of birth
+
+## Filtrando as variáveis
+
+Usando o banco de dados das variáveis, filtrando apenas as informações a
+respeito dessas:
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+useful_variables <- original_variables %>% 
+  filter(Name == "cntry"| Name== "nwspol"| Name== "netusoft" | Name== "lrscale"| Name== "polintr"| Name== "gndr"| Name== "yrbrn")
+
+```
+
+## Limpando o banco de dados original
+
+Selecionando apenas as colunas das variáveis que importam para a
+análise, usando o banco criado anteriormente:
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+useful_variables_vetor <- useful_variables$Name
+
+dados1 <- original_data %>% 
+  select(useful_variables_vetor)
+
+```
+
+Vamos realizar algumas limpezas para obter apenas valores reais, usando
+como base o Codebook:
+
+-   Usaremos idades apenas até 80 anos em 2016
+
+-   Usaremos idades apenas maiores de 18 anos em 2016 Portanto,
+    restringiremos as respostas à variável yrbrn do ano de 1936 a 1998.
+    Além disso, valores inválidos como 000 ou 9999 serão removidos
+
+-   a variável gndr será filtrada apenas para os valores 1 e 2.
+
+-   os valores válidos de netusoft vão de de 1 a 5;
+
+-   os valores válidos de lrscale vão de 0 a 10;
+
+-   os valores válidos de polintr vão de 1 a 4;
+
+-   serão usados os valores de nwspol (horas consumindo notícias sobre
+    polítias) entre 0 e 480 minutos (equivalente a 8 horas)
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+clean_data <- dados1 %>% 
+  filter(yrbrn >= 1936) %>% 
+  filter(yrbrn <= 1998) %>% 
+  filter(gndr == 2 | gndr == 1) %>% 
+  filter(netusoft >= 1) %>% 
+  filter(netusoft <= 5) %>% 
+  filter(lrscale >= 0) %>% 
+  filter(lrscale <= 10) %>% 
+  filter(polintr >= 1) %>% 
+  filter(polintr <= 4) %>% 
+  filter(nwspol >= 0) %>% 
+  filter(nwspol <= 480)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+head(clean_data) %>% 
+  kable()
+```
+
+# Recodificando variáveis
+
+Para facilitar as análises, serão recodificadas algumas variáveis: 1.
+Serão escritos os países por extenso, ao invés de siglas; 2. Serão
+escritos os gêneros "male" e "female" ao invés dos números 1 e 2; 3; A
+variável netusoft será recodificada para as frequências (Never, often
+etc...) ao invés dos números de 1 a 5 4. Será criada uma variável que
+calcula a idade que cada respondente tinha no ano de 2016 5. Será criada
+uma variável para faixas de idade; 6. Será criada uma variável de
+espectro político com as categorias esquerda, centro e direita; 7. Será
+criada uma nova variável para interesse em política em que haverá os
+"interessados em política" e os "desinteressados"
+
+## Recodificações:
+
+Primeiramente, as recodificações que envolvem mudar os nomes dos valores
+das variáveis categóricas
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+clean_data2 <- clean_data %>%
+  #recodificação do nome dos países, escritos por extenso
+    mutate(cntry = case_when(
+      cntry %in% "AT"~"Austria",
+      cntry %in% "BE"~"Belgium",
+      cntry %in% "CH"~"Switzerland",
+      cntry %in% "CZ"~"Czechia",
+      cntry %in% "DE"~"Germany",
+      cntry %in% "EE"~"Estonia",
+      cntry %in% "ES"~"Spain",
+      cntry %in% "FI"~"Finland",
+      cntry %in% "FR"~"France",
+      cntry %in% "GB"~"United Kingdom",
+      cntry %in% "HU"~"Hungary",
+      cntry %in% "IE"~"Ireland",
+      cntry %in% "IL"~"Israel",
+      cntry %in% "IS"~"Iceland",
+      cntry %in% "IT"~"Italy",
+      cntry %in% "LT"~"Lithuania", 
+      cntry %in% "NL"~"Netherlands",
+      cntry %in% "NO"~"Norway",
+      cntry %in% "PL"~"Poland",
+      cntry %in% "PT"~"Portugal",
+      cntry %in% "RU"~"Russian Federation",
+      cntry %in% "SE"~"Sweden",
+      cntry %in% "SI"~"Slovenia"
+    )) %>% 
+  #recodificação de gênero, em que 1 = male e 2 = female
+    mutate(gndr = case_when(
+      gndr == 1~"male",
+      gndr == 2~"female",
+    )) %>% 
+  #recode da variável polintr em que 1 = Very interested, 2 = Quite interested, 3 = Hardly interested e 4 = Not at all interested
+    mutate(polintr = case_when(
+      polintr == 1~"Very interested",
+      polintr == 2~"Quite interested",
+      polintr == 3~"Hardly interested",
+      polintr == 4~"Not at all interested",
+    )) %>% 
+#recode da variável netusoft em que 1 = Never, 2 = Occasionally, 3 = A few times a week, 4 = Most days, 5 = Every day
+    mutate(netusoft = case_when(
+      netusoft == 1~"Never",
+      netusoft == 2~"Occasionally",
+      netusoft == 3~"A few times a week",
+      netusoft == 4~"Most days",
+      netusoft == 5~"Every day"
+    ))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+head(clean_data2) %>% 
+  kable()
+```
+
+Em segundo lugar, renomear as colunas para que fiquem mais claras:
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+clean_data3 <- clean_data2 %>% 
+  rename(country = cntry,
+         minutes_news = nwspol,
+         use_internet = netusoft,
+         political_interest = polintr,
+         political_opinion = lrscale,
+         gender = gndr,
+         birth_year = yrbrn)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+head(clean_data3) %>% 
+  kable()
+```
+
+Em terceiro lugar, criaremos novas variáveis que serão úteis para as
+análises: - age = Uma variável que calcule a idade com base no ano de
+2016 - age_range = uma variável de faixas de idades: 18 a 30 31 a 50 51
+a 70 mais de 70 - political_interest_binary = uma variável baseada em
+polintr em que 1 e 2 viram "interessados em política", e 3 e 4 viram
+"desinteressados em política" - left_right = uma variável de espectro
+político em que: esquerda 0, 1, 2 e 3 centro 4, 5 e 6 direita 7, 8, 9 e
+10
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+clean_data4 <- clean_data3 %>% 
+#criar uma variável que calcule a idade com base no ano de 2016
+    mutate(age = 2016-birth_year) %>% 
+#criar uma variável de faixas de idades: 18 a 30 31 a 50 51 a 70 mais de 70
+    mutate(age_range = case_when(
+      age >= 18 & age <= 30 ~ "18 a 30 anos",
+      age >= 31 & age <= 50 ~ "31 a 50 anos",
+      age >= 51 & age <= 70 ~ "51 a 70 anos",
+      age >= 71 ~ "mais de 70 anos"
+    )) %>% 
+#criar a variável political_interest polintr em que "Very interested" e "Quite interested" viram "interessados em política", e "Hardly interested" e "Not at all interested" viram "desinteressados em política
+    mutate(political_interest_binary  = case_when(
+      political_interest == "Very interested"~"interessado em política", 
+      political_interest == "Quite interested"~"interessado em política",
+      political_interest == "Hardly interested"~"desinteressado em política",
+      political_interest == "Not at all interested"~"desinteressado em política"
+    )) %>% 
+#Criar uma variável de left_right em que: esquerda 0, 1, 2 e 3; centro 4, 5 e 6; direita 7, 8, 9 e 10
+    mutate(left_right = case_when(
+      political_opinion == 0 ~ "esquerda", 
+      political_opinion == 1 ~ "esquerda",  
+      political_opinion == 2 ~ "esquerda", 
+      political_opinion == 3 ~ "esquerda",
+      political_opinion == 4 ~ "centro",
+      political_opinion == 5 ~ "centro",
+      political_opinion == 6 ~ "centro",
+      political_opinion == 7 ~ "direita",
+      political_opinion == 8 ~ "direita",
+      political_opinion == 9 ~ "direita",
+      political_opinion == 10 ~ "direita"
+    ))
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+clean_data4 %>% 
+  select(age, age_range, political_interest_binary, left_right) %>% 
+  slice(1:10) %>% 
+  kable()
+```
+
+# Estatísticas descritivas e Gráficos
+
+## Variáveis sociodemográficas
+
+Quantidade de respondentes em cada país:
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+respondentes_paises <- clean_data4 %>% 
+  group_by(country) %>% 
+  tally() %>% 
+  mutate(porcentagens = (100*n)/sum(.$n))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+respondentes_paises %>% 
+  arrange(country) %>% 
+  add_row(country = "TOTAL", n = sum(.$n), porcentagens = 100) %>% 
+  kable(caption = "Quantidade de respondentes por países",
+        col.names = c("País", "Respondentes", "%"),
+        format.args=list(big.mark=".", decimal.mark=","), digits = 1)
+```
+
+Quantidade de respondentes de cada gênero:
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+respondentes_genero <- clean_data4 %>% 
+  group_by(gender) %>% 
+  tally() %>% 
+  mutate(porcentagens = (100*n)/sum(.$n))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+respondentes_genero %>% 
+  arrange(gender) %>% 
+  add_row(gender = "TOTAL", n = sum(.$n),
+          porcentagens = 100) %>% 
+  kable(caption = "Quantidade de respondentes por Gênero",
+        col.names = c("Gênero", "Respondentes", "%"),
+        format.args=list(big.mark=".", decimal.mark=","),
+        digits = 1)
+```
+
+Quantidade de respondntes em cada faixa de idade:
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+respondentes_idade <- clean_data4 %>% 
+  group_by(age_range) %>% 
+  tally() %>% 
+  mutate(porcentagens = (100*n)/sum(.$n))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+respondentes_idade %>% 
+  add_row(age_range = "TOTAL", n = sum(.$n), porcentagens = 100) %>% 
+  kable(caption = "Quantidade de respondentes por Faixa de Idade",
+        col.names = c("Idade", "Respondentes", "%"),
+        format.args=list(big.mark=".", decimal.mark=","),
+        digits = 1)
+```
+
+## Espectro político
+
+Quantidade de respondentes em cada espectro político:
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+respondentes_espectro <- clean_data4 %>% 
+  group_by(left_right) %>% 
+  tally() %>% 
+  mutate(porcentagens = (100*n)/sum(.$n))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+respondentes_espectro %>% 
+  add_row(left_right = "TOTAL", n = sum(.$n),
+          porcentagens = 100) %>% 
+  kable(caption = "Quantidade de respondentes por Posicionamento Político",
+        col.names = c("Posicionamento", "Respondentes", "%"),
+        format.args=list(big.mark=".", decimal.mark=","),
+        digits = 1)
+```
+
+## Uso de internet
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+respondentes_internet <- clean_data4 %>% 
+  group_by(use_internet) %>% 
+  tally() %>% 
+  mutate(porcentagens = (100*n)/sum(.$n))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+respondentes_internet %>% 
+  arrange(-n) %>% 
+  add_row(use_internet = "TOTAL", n = sum(.$n), porcentagens = 100) %>% 
+  kable(caption = "Frequência de uso da internet",
+        col.names = c("Frequência", "Respondentes", "%"),
+        format.args=list(big.mark=".", decimal.mark=","),
+        digits = 1)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+respondentes_internet %>% 
+  ggplot() +
+  geom_col(aes(x = use_internet, y = n)) +
+  ggtitle("Frequência de uso da internet") +
+  xlab("frequência de uso") +
+  ylab("n") +
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+```
+
+## Interesse em política
+```{r message=FALSE, warning=FALSE, include=FALSE}
+respondentes_interesse <- clean_data4 %>% 
+  group_by(political_interest) %>% 
+  tally() %>% 
+  mutate(porcentagens = (100*n)/sum(.$n))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+respondentes_interesse %>% 
+  arrange(-porcentagens) %>% 
+  add_row(political_interest = "TOTAL", n = sum(.$n), porcentagens = 100) %>% 
+  kable(caption = "Quantidade de respondentes por Posicionamento Político",
+        col.names = c("Posicionamento", "Respondentes", "%"),
+        format.args=list(big.mark=".", decimal.mark=","), digits = 1)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+respondentes_interesse %>% 
+  ggplot() +
+  geom_col(aes(x = political_interest, y = n)) +
+  ggtitle("Interesse em política") +
+  xlab("Faixas de idade") +
+  ylab("n") +
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+```
+
+# Cruzando variáveis:
+
+Espectro político e gênero:
+```{r message=FALSE, warning=FALSE, include=FALSE}
+espectro_genero <- 
+clean_data4 %>% 
+  group_by(gender, left_right) %>% 
+  tally() %>% 
+  mutate(porcentagens = (100*n)/sum(.$n)) %>% 
+  ungroup()
+```
+
+```{r echo=FALSE, message=TRUE, warning=FALSE}
+espectro_genero %>% 
+  ggplot() +
+  geom_col(aes(x = gender, y = n)) +
+  ggtitle("Gênero e espectro político") +
+  xlab("gênero") +
+  ylab("n") +
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5)) + facet_grid(cols=vars(left_right))
+```
+
+
+Espectro e faixas de idades
+```{r}
+# uma tabela com as faixas de idade juntas e gráficos em grid para cada faixa
+espectro_idade <- 
+  clean_data4 %>% 
+  group_by(age_range, left_right) %>% 
+  tally() %>% 
+  mutate(porcentagens = (100*n)/sum(.$n)) %>% 
+  ungroup()
+
+```
+
+```{r}
+espectro_idade %>% 
+  ggplot() +
+  geom_col(aes(x = age_range, y = n)) +
+  ggtitle("Faixas de idade e espectro político") +
+  xlab("idades") +
+  ylab("n") +
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5)) +   facet_grid(cols=vars(left_right)) +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+# Interesse em política X espectro político
+
+```{r}
+interesse_espectro <- 
+  clean_data4 %>% 
+  group_by(left_right, political_interest_binary) %>%
+  tally() %>% 
+  mutate(porcentagens = (100*n)/sum(.$n)) %>% 
+  ungroup()
+```
+
+lrscale e polintr
+
+cruzar espectro político com interesse em política var categorica e var
+categorica - regressão
+
+um grafico pra cada (esquerda, centro e direita)
+```{r}
+interesse_espectro %>% 
+  ggplot() +
+  geom_col(aes(x = left_right, y = n)) +
+  ggtitle("Interesse em política e espectro político") +
+  xlab("idades") +
+  ylab("n") +
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5)) +   facet_grid(cols=vars(political_interest_binary)) +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+# Interesse em política x consumo de notícias sobre política
+
+nwspol e interesse_politica regressão var categórica e var contínua
+
+```{r}
+clean_data4
+
+nwspol e political_interest_binary
+
+flights %>% filter(origin!="LGA") %>% 
+  pull(dep_delay) %>%
+  t.test(mu=13.4) %>% 
+  tidy()
+
+
+```
+
+# Interesse em política x uso da internet
+
+regressão var categorica e var categorica
+
+```{r}
+interesse_internet <- 
+  clean_data4 %>% 
+  group_by(political_interest_binary, use_internet) %>% 
+  tally() %>% 
+  mutate(porcentagens = (100*n)/sum(.$n)) %>% 
+  ungroup()
+```
